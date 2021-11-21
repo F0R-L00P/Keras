@@ -1,84 +1,86 @@
+import random
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 import keras
-from keras.layers import Dense
+import tensorflow
 from keras.models import Sequential
+from keras.layers import Dense, SimpleRNN, LSTM
 from tensorflow.keras.utils import to_categorical
 from tensorflow.python.keras.layers.core import Activation
+from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
 
 from sklearn.datasets import load_iris
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, ConfusionMatrixDisplay,\
     confusion_matrix
+
+random.seed(7)
+np.random.seed(7)
+tensorflow.random.set_seed(7)
 ####################################################
+# lets generate X values and corresponding sin at y
+X = np.linspace(
+                    start=0, 
+                    stop=100, 
+                    num=700
+                )
+y = np.sin(X)
 
-X, y = load_iris(return_X_y=True)
+# visualize values
+plt.plot(X, y);
 
-X_train, X_test, y_train, y_test = train_test_split(
-                                                    X, y, 
-                                                    test_size=0.10, 
-                                                    random_state=7,
-                                                    shuffle=True,
-                                                    stratify=y
-                                                    )
+# process as dataframe
+df = pd.DataFrame(data=y, index=X, columns=['sine_values'])
+df.head()
+round(df)
+# break dataframe to seperate 
+# check number of instances
+len(df)
 
+# setting-up test size
+test_percent = 0.20
+# get data %
+test_index = int(len(df) * test_percent)
+# get tain index
+train_index = int(len(df)) - test_index
+
+train_data = df.iloc[:train_index]
+test_data = df.iloc[train_index:]
+
+# check train test split visual
+plt.plot(train_data)
+plt.plot(test_data);
+
+# scale data
 scaler = MinMaxScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
+train_data = scaler.fit_transform(train_data)
+test_data = scaler.transform(test_data)
 
-# label must be encoded prior to model fitting
-y_train = to_categorical(y_train, 3)
-y_test = to_categorical(y_test, 3)
+##################################################
+length = 50
+batch = 1
 
-# KEras model
-# input dim is the expected features
-# units defines the first neuronal layer, we will ue 2x the feature
+generator = TimeseriesGenerator(
+                                data=train_data,
+                                targets=train_data,
+                                length=length,
+                                batch_size=batch
+                                )
 
-model = keras.Sequential(
-                    [
-                        keras.layers.Dense(100, activation='relu'),
-                        keras.layers.Dense(50, activation='relu'),
-                        keras.layers.Dense(3, activation='softmax')
-                    ]
-)
+#testing len and batch
+len(train_data)
+len(generator) #lower len as the batch is of len 2
 
-loss_function = keras.losses.CategoricalCrossentropy(
-                    name="categorical_crossentropy",
-)
+X, y = generator[0]
 
-model.compile(
-                optimizer='adam', 
-                loss=loss_function, 
-                metrics=['accuracy']
-)
+# given the n points provided for X
+#   as per the length specifid in the parameter
+#   predict the third point y
+print(X, y)
 
-model.fit(
-            x=X_train_scaled, 
-            y=y_train, 
-            batch_size=10,
-            epochs=100, 
-            verbose=2,
-            validation_data=(
-                              X_test_scaled, 
-                              y_test
-                            )
-)
+###################################################
+# modeling
 
-model.summary()
-
-# visualizing loss
-# spike in validation loss indicates model over-fitting
-model_loss = pd.DataFrame(model.history.history)
-model_loss[['loss', 'val_loss']].plot()
-
-# getting model predictions
-y_pred = model.predict(X_test_scaled)
-y_pred_classes=np.argmax(y_pred, axis=1)
-
-y_test = np.argmax(y_test, axis=1)
-
-print(classification_report(y_test, y_pred_classes))
-print(confusion_matrix(y_test, y_pred_classes))
