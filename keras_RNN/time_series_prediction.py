@@ -1,14 +1,16 @@
 import random
+from keras import callbacks
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 import keras
+from pandas.io.pytables import dropna_doc
 import tensorflow
 from keras.models import Sequential
 from keras.layers import Dense, SimpleRNN, LSTM
-from tensorflow.keras.utils import to_categorical
-from tensorflow.python.keras.layers.core import Activation
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.python.keras.layers.core import Activation, Dropout
 from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
 
 from sklearn.datasets import load_iris
@@ -22,26 +24,21 @@ np.random.seed(7)
 tensorflow.random.set_seed(7)
 ####################################################
 # lets generate X values and corresponding sin at y
-X = np.linspace(
-                    start=0, 
-                    stop=100, 
-                    num=700
+df = pd.read_csv(
+                    r'C:\Users\behna\OneDrive\Documents\GitHub\Keras\keras_RNN\timeseries_retail_data.csv',
+                    parse_dates=True,
+                    index_col='DATE'
                 )
-y = np.sin(X)
 
-# visualize values
-plt.plot(X, y);
-
-# process as dataframe
-df = pd.DataFrame(data=y, index=X, columns=['sine_values'])
 df.head()
-round(df)
-# break dataframe to seperate 
+# visualize values
+df.plot(figsize=(12, 8));
+
 # check number of instances
 len(df)
 
 # setting-up test size
-test_percent = 0.20
+test_percent = 0.05
 # get data %
 test_index = int(len(df) * test_percent)
 # get tain index
@@ -60,19 +57,19 @@ train_data = scaler.fit_transform(train_data)
 test_data = scaler.transform(test_data)
 
 ##################################################
-length = 50
+length = 12 # which is less than the test data length
 batch = 1
 
-generator = TimeseriesGenerator(
+train_generator = TimeseriesGenerator(
                                 data=train_data,
                                 targets=train_data,
                                 length=length,
                                 batch_size=batch
-)
+                                )
 
 #testing len and batch
 len(train_data)
-len(generator) #lower len as the batch is of len 2
+len(train_generator) #lower len as the batch is of len 2
 
 X, y = generator[0]
 
@@ -81,14 +78,34 @@ X, y = generator[0]
 #   predict the third point y
 print(X, y)
 
+#setting up validation generator
+val_generator = TimeseriesGenerator(
+                                    data=test_data,
+                                    targets=test_data,
+                                    length=length,
+                                    batch_size=batch
+                                    )
+
 ###################################################
+n_features=1
+stopper = EarlyStopping(
+                        monitor='val_loss',
+                        patience=2
+                        )
 # modeling
 model = keras.Sequential(
                     [
-                        keras.layers.SimpleRNN(
-                            10, 
-                            input_shape=(length,1) # number of features
-                        ),
+                        keras.layers.LSTM(
+                                            100, 
+                                            activation='relu',
+                                            dropout=0.50,
+                                            #inpout is length of batch 
+                                            #by number of features
+                                            input_shape=(
+                                                          length,
+                                                          n_features
+                                                        )
+                                        ),
                         keras.layers.Dense(1)
                     ]
 )
@@ -101,14 +118,16 @@ model.compile(
                 optimizer='adam', 
                 loss=loss_function, 
                 metrics=['accuracy']
-)
+            )
 
 # fit model from the built generator
 model.fit_generator(
-                     generator,
-                     epochs=5,
+                     train_generator,
+                     epochs=20,
+                     validation_data=val_generator,
+                     callbacks=stopper,
                      verbose=2
-)
+                    )
 
 
 model.summary()
