@@ -1,33 +1,35 @@
+# STAPEL LIBRARIES
 import random
-from keras import callbacks
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# DEEP LEARNING LIBRARIES
 import keras
-from pandas.io.pytables import dropna_doc
 import tensorflow
+from keras import callbacks
 from keras.models import Sequential
 from keras.layers import Dense, SimpleRNN, LSTM
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.python.keras.layers.core import Activation, Dropout
 from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
 
-from sklearn.datasets import load_iris
+# MACHINE LEARNING LIBRARIES
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, ConfusionMatrixDisplay,\
     confusion_matrix
 
+# SETTING ALL SEED LEVELS
 random.seed(7)
 np.random.seed(7)
 tensorflow.random.set_seed(7)
 ####################################################
 # lets generate X values and corresponding sin at y
 df = pd.read_csv(
-                    r'C:\Users\behna\OneDrive\Documents\GitHub\Keras\keras_RNN\timeseries_retail_data.csv',
-                    parse_dates=True,
-                    index_col='DATE'
+                r'C:\Users\behna\OneDrive\Documents\GitHub\Keras\keras_RNN\timeseries_retail_data.csv',
+                parse_dates=True,
+                index_col='DATE'
                 )
 
 df.head()
@@ -71,7 +73,7 @@ train_generator = TimeseriesGenerator(
 len(train_data)
 len(train_generator) #lower len as the batch is of len 2
 
-X, y = generator[0]
+X, y = train_generator[0]
 
 # given the n points provided for X
 #   as per the length specifid in the parameter
@@ -86,6 +88,8 @@ val_generator = TimeseriesGenerator(
                                     batch_size=batch
                                     )
 
+X, y = val_generator[0]
+print(X, y)
 ###################################################
 n_features=1
 stopper = EarlyStopping(
@@ -96,22 +100,18 @@ stopper = EarlyStopping(
 model = keras.Sequential(
                     [
                         keras.layers.LSTM(
-                                            100, 
+                                            10, 
                                             activation='relu',
-                                            dropout=0.50,
                                             #inpout is length of batch 
                                             #by number of features
-                                            input_shape=(
-                                                          length,
-                                                          n_features
-                                                        )
+                                            input_shape=(length,n_features)
                                         ),
                         keras.layers.Dense(1)
                     ]
 )
 
 loss_function = keras.losses.MeanSquaredError(
-                        name="mean_squared_error"
+                        name="mse"
 )
 
 model.compile(
@@ -125,13 +125,15 @@ model.fit_generator(
                      train_generator,
                      epochs=20,
                      validation_data=val_generator,
-                     callbacks=stopper,
+                     callbacks=[stopper],
                      verbose=2
                     )
-
 
 model.summary()
 
 # get model loss
 losses = pd.DataFrame(model.history.history)
-losses.plot()
+losses[['loss', 'val_loss']].plot()
+
+# test new instances and make prediction
+test_prediction = []
