@@ -27,7 +27,7 @@ tensorflow.random.set_seed(7)
 ####################################################
 # lets generate X values and corresponding sin at y
 df = pd.read_csv(
-                r'C:\Users\behna\OneDrive\Documents\GitHub\Keras\keras_RNN\timeseries_retail_data.csv',
+                r'GitHub\Keras\keras_RNN\timeseries_retail_data.csv',
                 parse_dates=True,
                 index_col='DATE'
                 )
