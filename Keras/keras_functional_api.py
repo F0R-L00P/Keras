@@ -1,5 +1,8 @@
+from gc import callbacks
 from tabnanny import verbose
 import pandas as pd
+import pydot
+import graphviz
 
 import matplotlib.pyplot as plt
 from sklearn import metrics
@@ -16,10 +19,10 @@ from sklearn.model_selection import train_test_split
 # Define Sequential model with 3 layers
 model = keras.Sequential(
     [
-        keras.Input(shape=(3,)), # define input in model, skip build
-        layers.Dense(2, activation="relu", name="layer1"),
-        layers.Dense(3, activation="relu", name="layer2"),
-        layers.Dense(4, name="layer3"),
+        keras.Input(shape=(8,)), # define input in model, skip build
+        layers.Dense(50, activation="relu", name="layer1"),
+        layers.Dense(1, activation="sigmoid", name="layer2"),
+#        layers.Dense(4, name="layer3"),
     ]
 )
 
@@ -43,7 +46,7 @@ prediction_y = model(x)
 #########################################
 # define input layer on 1 sample
 # defining a node
-inputs = keras.Input(shape=(784,))
+inputs = keras.Input(shape=(8,))
 # define the next layer in the network but not yet placed!
 dense1 = layers.Dense(64, activation="relu", name='dense1')
 dense2 = layers.Dense(32, activation="relu", name='dense2')
@@ -68,7 +71,7 @@ model(X).shape
 # Random Net on Titanic Data
 #########################################
 df = pd.read_csv(r'C:\Users\behna\OneDrive\Documents\Data Science - Projects\20210317 Titanic\1. Original Date\titanic\train.csv')
-df.drop(['Name', 'Ticket', 'Cabin'], axis=1, inplace=True)
+df.drop(['Name', 'Ticket', 'Cabin', 'PassengerId'], axis=1, inplace=True)
 df = pd.get_dummies(df, prefix=['Sex', 'Embark'], drop_first=True)
 df['Age'].fillna((df['Age'].mean()), inplace=True)
 df.isna().sum()
@@ -81,7 +84,7 @@ y = df['Survived']
 #KERAS NN MODEL
 ###########################
 # define input layer
-titanic_input = keras.Input(shape=(9,))
+titanic_input = keras.Input(shape=(8,))
 
 #64 neuron connected layers
 dense1 = layers.Dense(64, activation="relu", name='64dense1')
@@ -112,7 +115,7 @@ internal32_dense4 = dense41(internal32_dense3)
 internal32_dense5 = dense51(internal32_dense4)#-> to output
 
 #64-32 combination
-dense_mix1 = layers.Dense(2, activation="sigmoid", name='inner_concat')
+dense_mix1 = layers.Dense(2, activation="relu", name='inner_concat')
 
 #interlayer concatination
 inter_layer = keras.layers.Concatenate(axis=1)(
@@ -125,24 +128,24 @@ inter_layer_mix1 = dense_mix1(inter_layer)
 
 # dense layer concatination
 # output of 64n layer and 32n layer
-dense_64_32_concat_layer = keras.layers.Concatenate(axis=0)(
+dense_64_32_concat_layer = keras.layers.Concatenate(axis=1)(
     [
         internal64_dense5, 
         internal32_dense5
     ]
 )
-dense_mix2 = layers.Dense(2, activation="sigmoid", name='outer_concat')
+dense_mix2 = layers.Dense(2, activation="relu", name='outer_concat')
 inter_layer_mix2 = dense_mix2(dense_64_32_concat_layer)
 
 # final concatination
-titanic_output = keras.layers.Concatenate(axis=0)(
+titanic_output = keras.layers.Concatenate(axis=1)(
     [
         inter_layer_mix1, 
         inter_layer_mix2
     ]
 )
 
-dense_mix3 = layers.Dense(2, activation="relu", name='outer_inner_concat')
+dense_mix3 = layers.Dense(1, activation="sigmoid", name='outer_inner_concat')
 final_output_mix3 = dense_mix3(titanic_output)
 
 # tetsing model
@@ -152,11 +155,21 @@ model = keras.Model(
     name="titanic_res_model"
 )
 
-test = tf.ones((1000, 9))
+test = tf.ones((1000, 8))
 model(test).shape
 
-#keras.utils.plot_model(model, "titanic.png", show_shapes=True)
+keras.utils.plot_model(model, "titanic.png", show_shapes=True)
 model.summary()
+
+early_stop = keras.callbacks.EarlyStopping(
+    monitor="val_loss",
+    min_delta=0.01,
+    patience=10,
+    verbose=1,
+    mode="auto",
+    baseline=None,
+    restore_best_weights=False,
+)
 
 model.compile(
     loss='binary_crossentropy',
@@ -164,15 +177,14 @@ model.compile(
     metrics=['accuracy']
 )
 
-
-
 model.fit(
     x=X,
     y=y,
-#    batch_size=5,
+    batch_size=5,
     epochs=100,
     verbose=2,
     validation_split=.15,
+    callbacks=[early_stop],
     shuffle=True,
 )
 
