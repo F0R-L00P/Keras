@@ -9,8 +9,9 @@ dataset = load_dataset("imdb")
 
 dataset['train']
 
-
+#######################
 # import Flair library
+#######################
 from flair.embeddings import WordEmbeddings
 from flair.data import Sentence
 import flair, torch
@@ -31,7 +32,6 @@ def word_embedding(target_feature):
 # test embedding
 sentence = Sentence(dataset['train']['text'][0])
 word_embedding(dataset['train']['text'][0])
-
 
 embed_list = []
 for i in tqdm(dataset['train']['text']):
@@ -65,10 +65,9 @@ from tensorflow.keras import layers
 model = keras.Sequential(
     [
         keras.Input(shape=(8,)), # define input in model, skip build
-        layers.LSTM(7)
+        layers.LSTM(7),
         layers.Dense(50, activation="relu", name="layer1"),
         layers.Dense(1, activation="sigmoid", name="layer2"),
-#        layers.Dense(4, name="layer3"),
+        layers.Dense(4, name="layer3"),
     ]
 )
-
