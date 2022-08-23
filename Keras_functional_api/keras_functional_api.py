@@ -70,7 +70,7 @@ model(X).shape
 # FUNCTIONAL API
 # Random Net on Titanic Data
 #########################################
-df = pd.read_csv(r'C:\Users\behna\OneDrive\Documents\Data Science - Projects\20210317 Titanic\1. Original Date\titanic\train.csv')
+df = pd.read_csv(r'titanic\train.csv')
 df.drop(['Name', 'Ticket', 'Cabin', 'PassengerId'], axis=1, inplace=True)
 df = pd.get_dummies(df, prefix=['Sex', 'Embark'], drop_first=True)
 df['Age'].fillna((df['Age'].mean()), inplace=True)
