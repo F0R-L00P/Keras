@@ -10,6 +10,7 @@ import time
 import functools
 import numpy as np
 from tqdm import tqdm
+import soundfile as sf
 from IPython import display as ipythondisplay
 #####################################################################
 # Download the dataset
@@ -284,3 +285,109 @@ for iter in tqdm(range(num_training_iterations)):
 
 # Save the trained model and the weights
 model.save_weights(checkpoint_prefix)
+#########################################################################################
+# reload the model if needed
+model = build_model(vocab_size, embedding_dim, rnn_units, batch_size=1)
+model.load_weights(tf.train.latest_checkpoint(checkpoint_dir))
+model.build(tf.TensorShape([1, None]))
+#########################################################################################
+### Prediction of a generated song ###
+def generate_text(model, start_string, generation_length=1000):
+    # Evaluation step (generating ABC text using the learned RNN model)
+
+    # Convert the start string to numbers (vectorize)
+    input_eval = [char2idx[s] for s in start_string]
+    input_eval = tf.expand_dims(input_eval, 0)
+
+    # Empty string to store our results
+    text_generated = []
+
+    # Here batch size == 1
+    model.reset_states()
+    tqdm._instances.clear()
+
+    for i in tqdm(range(generation_length)):
+        # Evaluate the inputs and generate the next character predictions
+        predictions = model(input_eval)
+
+        # Remove the batch dimension
+        predictions = tf.squeeze(predictions, 0)
+
+        # Use a multinomial distribution to sample
+        predicted_id = tf.random.categorical(predictions, num_samples=1)[-1, 0].numpy()
+
+        # Pass the prediction along with the previous hidden state
+        # as the next inputs to the model
+        input_eval = tf.expand_dims([predicted_id], 0)
+
+        # Add the predicted character to the generated text
+        text_generated.append(idx2char[predicted_id])
+
+    return (start_string + ''.join(text_generated))
+
+# ABC files start with "X" - this may be a good start string
+generated_text = generate_text(model, start_string="X", generation_length=1000)
+print(generated_text)
+
+#########################################################################################
+### Play back generated songs ###
+generated_songs = mdl.lab1.extract_song_snippet(generated_text)
+print(f"Extracted {len(generated_songs)} song snippets from the generated text.")
+
+# Save the generated songs to a file
+output_dir = "output"
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+# Save the generated songs to a file
+def song_to_waveform(song, bpm=120):
+    note_duration = 60 / bpm / 4
+    song_waveform = np.array([])
+    print(f'Song: {song}')
+    for j, note in enumerate(song):  # Add enumerate to get the index of the note
+        print(f'Note (iteration {j}): {note}')  # Add this line to inspect the note variable
+        print(f'Note type: {type(note)}')  # Print the type of the note variable
+        if isinstance(note, tuple) and len(note) >= 2:  # Check if note is a tuple with at least 2 elements
+            freq = note_to_freq(note[0])  # Use the custom note_to_freq function
+            duration = note[1] * note_duration
+            if freq != 0:
+                sine_wave = mdl.lab1.generate_sine_wave(freq, duration, amplitude=0.3)
+            else:
+                sine_wave = np.zeros(duration * sample_rate)
+            song_waveform = np.concatenate((song_waveform, sine_wave), axis=None)
+        else:
+            print(f"Skipping invalid note (iteration {j}): {note}")
+    return song_waveform
+
+# Define a dictionary that maps from note names to frequencies   
+_NOTE_FREQUENCIES = {
+    'c': 261.63,
+    'c#': 277.18,
+    'd': 293.66,
+    'd#': 311.13,
+    'e': 329.63,
+    'f': 349.23,
+    'f#': 369.99,
+    'g': 392.00,
+    'g#': 415.30,
+    'a': 440.00,
+    'a#': 466.16,
+    'b': 493.88,
+}
+
+# Define a function that converts a note name to a frequency
+def note_to_freq(note):
+    if note.lower() in _NOTE_FREQUENCIES:
+        return _NOTE_FREQUENCIES[note.lower()]
+    else:
+        return 0
+
+for i, song in enumerate(generated_songs):
+    # Synthesize the waveform from a song
+    waveform = song_to_waveform(song)
+
+    # If it's a valid song (correct syntax), save it as a .wav file
+    if waveform is not None:
+        filename = os.path.join(output_dir, f"generated_song_{i}.wav")
+        sf.write(filename, waveform, samplerate=22050)
+        print(f"Generated song {i} saved as {filename}")
