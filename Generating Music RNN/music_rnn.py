@@ -48,7 +48,7 @@ for char, _ in zip(char2idx, range(20)):
     print('  {:4s}: {:3d},'.format(repr(char), char2idx[char]))
 print('  ...\n}')
 
-
+# Define the RNN model parameters
 def vectorize_string(string):
     '''
     function to convert the all songs string to a vectorized
@@ -80,8 +80,6 @@ assert isinstance(vectorized_songs,
 # Then, our input sequence is "Hell" and the target sequence is "ello".
 
 ### Batch definition to create training examples ###
-
-
 def get_batch(vectorized_songs, seq_length, batch_size):
     # the length of the vectorized songs string
     n = vectorized_songs.shape[0] - 1
@@ -121,8 +119,6 @@ for i, (input_idx, target_idx) in enumerate(zip(np.squeeze(x_batch), np.squeeze(
         target_idx, repr(idx2char[target_idx])))
 
 # Define the RNN model
-
-
 def LSTM(rnn_units):
     return tf.keras.layers.LSTM(
         rnn_units,
@@ -187,8 +183,6 @@ print("Next Char Predictions: \n", repr("".join(idx2char[sampled_indices])))
 #########################################################################################
 # Training the model
 # Defining the loss function
-
-
 def compute_loss(labels, logits):
     '''define the loss function to compute and return the loss between
     the true labels and predictions (logits). Set the argument from_logits=True.'''
@@ -314,7 +308,8 @@ def generate_text(model, start_string, generation_length=1000):
         predictions = tf.squeeze(predictions, 0)
 
         # Use a multinomial distribution to sample
-        predicted_id = tf.random.categorical(predictions, num_samples=1)[-1, 0].numpy()
+        predicted_id = tf.random.categorical(
+            predictions, num_samples=1)[-1, 0].numpy()
 
         # Pass the prediction along with the previous hidden state
         # as the next inputs to the model
@@ -325,6 +320,7 @@ def generate_text(model, start_string, generation_length=1000):
 
     return (start_string + ''.join(text_generated))
 
+
 # ABC files start with "X" - this may be a good start string
 generated_text = generate_text(model, start_string="X", generation_length=1000)
 print(generated_text)
@@ -332,7 +328,8 @@ print(generated_text)
 #########################################################################################
 ### Play back generated songs ###
 generated_songs = mdl.lab1.extract_song_snippet(generated_text)
-print(f"Extracted {len(generated_songs)} song snippets from the generated text.")
+print(
+    f"Extracted {len(generated_songs)} song snippets from the generated text.")
 
 # Save the generated songs to a file
 output_dir = "output"
@@ -345,21 +342,28 @@ def song_to_waveform(song, bpm=120):
     song_waveform = np.array([])
     print(f'Song: {song}')
     for j, note in enumerate(song):  # Add enumerate to get the index of the note
-        print(f'Note (iteration {j}): {note}')  # Add this line to inspect the note variable
-        print(f'Note type: {type(note)}')  # Print the type of the note variable
-        if isinstance(note, tuple) and len(note) >= 2:  # Check if note is a tuple with at least 2 elements
-            freq = note_to_freq(note[0])  # Use the custom note_to_freq function
+        # Add this line to inspect the note variable
+        print(f'Note (iteration {j}): {note}')
+        # Print the type of the note variable
+        print(f'Note type: {type(note)}')
+        # Check if note is a tuple with at least 2 elements
+        if isinstance(note, tuple) and len(note) >= 2:
+            # Use the custom note_to_freq function
+            freq = note_to_freq(note[0])
             duration = note[1] * note_duration
             if freq != 0:
-                sine_wave = mdl.lab1.generate_sine_wave(freq, duration, amplitude=0.3)
+                sine_wave = mdl.lab1.generate_sine_wave(
+                    freq, duration, amplitude=0.3)
             else:
                 sine_wave = np.zeros(duration * sample_rate)
-            song_waveform = np.concatenate((song_waveform, sine_wave), axis=None)
+            song_waveform = np.concatenate(
+                (song_waveform, sine_wave), axis=None)
         else:
             print(f"Skipping invalid note (iteration {j}): {note}")
     return song_waveform
 
-# Define a dictionary that maps from note names to frequencies   
+
+# Define a dictionary that maps from note names to frequencies
 _NOTE_FREQUENCIES = {
     'c': 261.63,
     'c#': 277.18,
@@ -382,6 +386,7 @@ def note_to_freq(note):
     else:
         return 0
 
+# Generate a waveform for each song and save it to a file
 for i, song in enumerate(generated_songs):
     # Synthesize the waveform from a song
     waveform = song_to_waveform(song)
