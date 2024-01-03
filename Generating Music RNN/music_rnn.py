@@ -362,7 +362,6 @@ def song_to_waveform(song, bpm=120):
             print(f"Skipping invalid note (iteration {j}): {note}")
     return song_waveform
 
-
 # Define a dictionary that maps from note names to frequencies
 _NOTE_FREQUENCIES = {
     'c': 261.63,
